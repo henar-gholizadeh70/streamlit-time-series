@@ -4,4 +4,5 @@ streamlit
 numpy
 scikit-learn
 statsmodels
-tensorflow
+tensorflow-cpu==2.11.0
+
