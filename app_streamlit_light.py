@@ -501,7 +501,8 @@ for p in p_range:
 # نتایج
 print(f"\n✅ Best ARIMAX Order: {best_order} with AIC = {best_aic:.2f}")
 result_df = pd.DataFrame(results, columns=['p', 'd', 'q', 'AIC']).sort_values('AIC')
-display(result_df)
+st.dataframe(result_df)
+
 
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.metrics import mean_absolute_error, mean_squared_error
