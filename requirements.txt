@@ -4,3 +4,4 @@ streamlit
 numpy
 scikit-learn
 statsmodels
+tensorflow
