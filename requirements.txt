@@ -2,8 +2,6 @@ streamlit
 pandas
 numpy
 matplotlib
-scikit-learn
 statsmodels
-tensorflow-cpu==2.11.0
 
 
