@@ -1,0 +1,71 @@
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.tsa.arima.model import ARIMA
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings("ignore")
+
+st.set_page_config(page_title="Time Series ARIMA/ARIMAX", layout="wide")
+st.title("📊 Time Series Viewer & Forecasting")
+
+uploaded_file = st.file_uploader("Upload your dataset (CSV or Excel):", type=["csv", "xlsx"])
+
+if uploaded_file is not None:
+    if uploaded_file.name.endswith('.csv'):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = pd.read_excel(uploaded_file)
+
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+    df = df.sort_values(by=['participant_id', 'date'])
+    st.success("✅ File uploaded and cleaned")
+
+    grouped = df.groupby('participant_id')
+    valid_pids = [pid for pid, group in grouped if len(group) >= 12]
+    selected_pid = st.selectbox("Select a participant ID:", valid_pids)
+    participant_data = grouped.get_group(selected_pid).sort_values('date').set_index('date')
+
+    st.subheader("🔎 Stationarity Analysis & ACF")
+    from statsmodels.tsa.stattools import adfuller
+    from statsmodels.graphics.tsaplots import plot_acf
+    ts_data = participant_data['time_to_event'].astype(float).dropna()
+    adf_result = adfuller(ts_data)
+    st.write(f"ADF Statistic: {adf_result[0]:.4f}, p-value: {adf_result[1]:.4f}")
+    fig_acf, ax_acf = plt.subplots()
+    plot_acf(ts_data, lags=5, ax=ax_acf)
+    st.pyplot(fig_acf)
+
+    model_type = st.selectbox("Select model type:", ["ARIMA", "ARIMAX"], key="model_type")
+
+    if model_type == "ARIMA":
+        st.subheader("📈 ARIMA Forecasting")
+        arima_option = st.selectbox("Choose ARIMA config:", ["Select an option", "ARIMA(1,1,1)", "ARIMA(3,1,0)"], key="arima_option")
+        if arima_option != "Select an option":
+            y = participant_data['time_to_event'].astype(float).dropna()
+            split_idx = int(len(y) * 0.8)
+            y_train, y_test = y[:split_idx], y[split_idx:]
+            order = (1,1,1) if arima_option == "ARIMA(1,1,1)" else (3,1,0)
+            model = ARIMA(y_train, order=order)
+            model_fit = model.fit()
+            forecast = model_fit.forecast(steps=len(y_test))
+            mae = mean_absolute_error(y_test, forecast)
+            mse = mean_squared_error(y_test, forecast)
+            rss = np.sum((y_test - forecast) ** 2)
+            st.write(f"**MAE:** {mae:.4f}, **MSE:** {mse:.5f}, **RSS:** {rss:.5f}")
+            fig, ax = plt.subplots()
+            ax.plot(y_test.index, y_test, label="Actual")
+            ax.plot(y_test.index, forecast, label="Forecast", linestyle="--")
+            ax.set_title(f"{arima_option} Forecast vs Actual")
+            ax.legend()
+            st.pyplot(fig)
+
+    elif model_type == "ARIMAX":
+        st.write("✅ ARIMAX part remains same as before.")
+else:
+    st.info("Please upload a dataset to continue.")
